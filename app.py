@@ -1,5 +1,5 @@
 # ==============================================================================
-# FINAL CAPSTONE PROJECT: V26 - AI MODEL NAME FIX
+# FINAL CAPSTONE PROJECT: V27 - AI FEATURE ADDED TO EXISTING APP
 # ==============================================================================
 
 import streamlit as st
@@ -12,7 +12,7 @@ import google.generativeai as genai
 
 # --- CACHED MODEL TRAINING (No changes here) ---
 @st.cache_resource
-def load_and_train_models():
+def load_all_data_and_train_models():
     # ... (The data generation and model training code is unchanged)
     degradation_scenarios = [
         {'config': {'Electrode_Material': 'CuO/MnO2@MWCNT', 'Electrolyte_Type': 'RAE', 'Device_Type': 'Coin Cell', 'Current_Density_Ag-1': 1.0}, 'start_cycles': 0, 'end_cycles': 5000, 'start_charge': 192.03, 'end_charge': 173.79, 'start_discharge': 182.89, 'end_discharge': 165.51},
@@ -38,7 +38,7 @@ def load_and_train_models():
     all_data = []
     for scenario in degradation_scenarios:
         charge_drop, discharge_drop = scenario['start_charge'] - scenario['end_charge'], scenario['start_discharge'] - scenario['end_discharge']
-        for cycles in range(0, int(scenario['end_cycles']) + 1, 250):
+        for cycles in range(0, scenario['end_cycles'] + 1, 250):
             cycle_ratio = cycles / scenario['end_cycles'] if scenario['end_cycles'] > 0 else 0
             charge = scenario['start_charge'] - charge_drop * (cycle_ratio ** 0.9)
             discharge = scenario['start_discharge'] - discharge_drop * (cycle_ratio ** 0.9)
@@ -52,30 +52,29 @@ def load_and_train_models():
     y_charge, y_discharge = df_processed['Charge_Capacity_mAh_g-1'], df_processed['Discharge_Capacity_mAh_g-1']
     charge_model = xgb.XGBRegressor(n_estimators=100, random_state=42).fit(df_processed[features_cols], y_charge)
     discharge_model = xgb.XGBRegressor(n_estimators=100, random_state=42).fit(df_processed[features_cols], y_discharge)
-    return charge_model, discharge_model, features_cols
+    return charge_model, discharge_model, features_cols, df_large
 
-# --- Load the models ---
-charge_model_xgb, discharge_model_xgb, feature_columns = load_and_train_models()
+# --- Load models and the large dataset ---
+charge_model_xgb, discharge_model_xgb, feature_columns, df_training_data = load_and_train_models()
 
 # --- WEB APPLICATION INTERFACE ---
 st.set_page_config(layout="wide")
 st.title("🔋 AI-Powered Supercapacitor Analyzer")
 st.markdown("A Capstone Project to predict supercapacitor performance and generate AI-driven insights.")
 
-# ### CONFIGURE THE GOOGLE AI API ###
+# ### NEW FEATURE: Configure the Google AI API ###
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # ### CORRECTION: Use the more stable model name ###
     gemini_model = genai.GenerativeModel('gemini-1.0-pro')
     ai_enabled = True
-except Exception as e:
+except Exception:
     ai_enabled = False
 
-tab1, tab2 = st.tabs(["Supercapacitor Predictor", "Technology Comparison"])
+# Restored the four tabs
+tab1, tab2, tab3, tab4 = st.tabs(["Supercapacitor Predictor", "Technology Comparison", "Training Dataset", "Reference Datasets"])
 
 # --- TAB 1: The Supercapacitor Predictor ---
 with tab1:
-    # (The code for Tab 1 is unchanged except for the AI prompt part)
     st.header("Supercapacitor Performance Predictor")
     st.sidebar.header("1. Scenario Parameters")
     material_options = ['CuO/MnO2@MWCNT', 'CuO/CoO@MWCNT', 'CuO@MWCNT', 'CuO']
@@ -88,6 +87,19 @@ with tab1:
     st.sidebar.header("2. Output Configuration")
     output_format = st.sidebar.selectbox("Select Output Format", ('Graph', 'Tabular Data', 'Simple Prediction'))
     
+    # Initialize variables to hold prediction results
+    charge_pred, discharge_pred, efficiency = 0, 0, 0
+    df_output = pd.DataFrame()
+    selected_cycles = 5000 # Default value
+    
+    if output_format == 'Simple Prediction':
+        selected_cycles = st.sidebar.slider("Select Number of Cycles", 0, 10000, 5000, 500)
+    else: # For Graph and Table
+        st.sidebar.subheader("Define Cycle Range")
+        start_cycle = st.sidebar.number_input("Start Cycles", 0, 9500, 0, 500)
+        end_cycle = st.sidebar.number_input("End Cycles", 500, 10000, 10000, 500)
+        step_cycle = st.sidebar.number_input("Cycle Step (Difference)", 100, 2000, 500, 100)
+    
     def predict_capacity(material, electrolyte, device, current_density, cycles):
         input_data = pd.DataFrame({'Current_Density_Ag-1': [current_density], 'Cycles_Completed': [cycles], 'Electrode_Material': [material], 'Electrolyte_Type': [electrolyte], 'Device_Type': [device]})
         input_encoded = pd.get_dummies(input_data)
@@ -95,12 +107,8 @@ with tab1:
         charge, discharge = charge_model_xgb.predict(final_input)[0], discharge_model_xgb.predict(final_input)[0]
         return float(charge), float(discharge)
 
-    charge_pred, discharge_pred, efficiency = 0, 0, 0
-    df_output = pd.DataFrame()
-    selected_cycles = 5000 # Default value
-
+    # --- Generate and Display Main Output ---
     if output_format == 'Simple Prediction':
-        selected_cycles = st.sidebar.slider("Select Number of Cycles", 0, 10000, 5000, 500)
         charge_pred, discharge_pred = predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, selected_cycles)
         efficiency = (discharge_pred / charge_pred) * 100 if charge_pred > 0 else 0
         st.subheader("Prediction Results")
@@ -109,77 +117,46 @@ with tab1:
         col2.metric("Predicted Discharge Capacity (mAh/g)", f"{discharge_pred:.2f}")
         col3.metric("Coulombic Efficiency", f"{efficiency:.2f} %")
     
-    else:
-        st.sidebar.subheader("Define Cycle Range")
-        start_cycle = st.sidebar.number_input("Start Cycles", 0, 9500, 0, 500)
-        end_cycle = st.sidebar.number_input("End Cycles", 500, 10000, 10000, 500)
-        step_cycle = st.sidebar.number_input("Cycle Step (Difference)", 100, 2000, 500, 100)
-        if start_cycle >= end_cycle:
-            st.error("Error: 'Start Cycles' must be less than 'End Cycles'.")
+    elif output_format in ['Graph', 'Tabular Data']:
+        if start_cycle >= end_cycle: st.error("Error: 'Start Cycles' must be less than 'End Cycles'.")
         else:
             cycles_to_plot = list(range(start_cycle, end_cycle + 1, step_cycle))
             output_data = [{'Cycles': c, 'Charge Capacity (mAh/g)': predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, c)[0], 'Discharge Capacity (mAh/g)': predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, c)[1]} for c in cycles_to_plot]
             df_output = pd.DataFrame(output_data)
+            df_output['Coulombic Efficiency (%)'] = (df_output['Discharge Capacity (mAh/g)'] / df_output['Charge Capacity (mAh/g)']) * 100
+            
             if output_format == 'Graph':
-                st.subheader("Predictive Degradation Graph")
-                fig, ax = plt.subplots(figsize=(10, 6))
-                ax.plot(df_output['Cycles'], df_output['Charge Capacity (mAh/g)'], marker='o', linestyle='-', markersize=4, label='Predicted Charge Capacity')
-                ax.plot(df_output['Cycles'], df_output['Discharge Capacity (mAh/g)'], marker='s', linestyle='--', markersize=4, label='Predicted Discharge Capacity')
-                ax.set_title(f'Prediction for {plot_material} ({plot_electrolyte})', fontsize=16)
-                ax.set_xlabel('Number of Cycles Completed', fontsize=12)
-                ax.set_ylabel('Capacity (mAh/g)', fontsize=12)
-                ax.grid(True); _ = ax.legend(); st.pyplot(fig)
+                st.subheader("Predictive Degradation and Efficiency Graphs")
+                fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
+                ax1.plot(df_output['Cycles'], df_output['Charge Capacity (mAh/g)'], marker='o', linestyle='-', markersize=4, label='Charge Capacity')
+                ax1.plot(df_output['Cycles'], df_output['Discharge Capacity (mAh/g)'], marker='s', linestyle='--', markersize=4, label='Discharge Capacity')
+                ax1.set_title(f'Capacity Degradation for {plot_material}', fontsize=16); ax1.set_ylabel('Capacity (mAh/g)', fontsize=12); ax1.grid(True); ax1.legend()
+                ax2.plot(df_output['Cycles'], df_output['Coulombic Efficiency (%)'], marker='^', linestyle=':', color='purple', label='Coulombic Efficiency')
+                ax2.set_title(f'Coulombic Efficiency for {plot_material}', fontsize=16); ax2.set_xlabel('Number of Cycles Completed', fontsize=12); ax2.set_ylabel('Efficiency (%)', fontsize=12); ax2.grid(True)
+                ax2.set_ylim(bottom=max(0, df_output['Coulombic Efficiency (%)'].min() - 2), top=102); ax2.legend(); st.pyplot(fig)
+            
             elif output_format == 'Tabular Data':
                 st.subheader("Predictive Degradation Data Table")
                 st.dataframe(df_output.style.format('{:.2f}'))
 
+    # --- AI Insights Section (Only added here) ---
     st.divider()
     st.subheader("🤖 AI-Powered Insights")
     if not ai_enabled:
-        st.error("AI Insights feature is currently unavailable. Please check if the GOOGLE_API_KEY is configured in the Streamlit secrets.")
+        st.error("AI Insights feature is currently unavailable. Please configure your GOOGLE_API_KEY in the Streamlit secrets.")
     else:
         if st.button("Generate AI Analysis"):
             with st.spinner("The AI is analyzing the results..."):
                 prompt = ""
+                # Create a prompt based on the current output format
                 if output_format == 'Simple Prediction':
-                    prompt = f"""
-                    You are an expert materials scientist analyzing supercapacitor performance data.
-                    A user configured a virtual experiment with these parameters:
-                    - Electrode Material: {plot_material}
-                    - Electrolyte: {plot_electrolyte}
-                    - Device Type: {plot_device}
-                    - Current Density: {plot_current_density} A/g
-
-                    The machine learning model predicted that at {selected_cycles} cycles, the Discharge Capacity is {discharge_pred:.2f} mAh/g and the Coulombic Efficiency is {efficiency:.2f}%.
-
-                    Based on this single data point, provide a concise, expert analysis in three sections:
-                    1.  **Performance Summary:** In one sentence, summarize what this specific result indicates about the configuration's performance.
-                    2.  **Key Observations:** In bullet points, explain the likely reasons for this performance. Mention the expected role of the chosen electrolyte (RAE is better than KOH) and material (composites with MWCNT are generally better).
-                    3.  **Recommendation:** Based on this performance, suggest a likely real-world application.
-                    """
+                    prompt = f"""You are an expert materials scientist. A user ran a virtual experiment with these parameters: Material={plot_material}, Electrolyte={plot_electrolyte}, Device={plot_device}. The model predicted that at {selected_cycles} cycles, the Discharge Capacity is {discharge_pred:.2f} mAh/g with a Coulombic Efficiency of {efficiency:.2f}%. Provide a concise, expert analysis in three sections: 1. **Performance Summary:** (1 sentence). 2. **Key Observations:** (bullet points explaining the result based on the inputs). 3. **Recommendation:** (suggest a real-world application)."""
                 elif not df_output.empty:
                     initial_cap = df_output.iloc[0]['Discharge Capacity (mAh/g)']
                     final_cap = df_output.iloc[-1]['Discharge Capacity (mAh/g)']
                     final_cycles = df_output.iloc[-1]['Cycles']
                     retention = (final_cap / initial_cap) * 100 if initial_cap > 0 else 0
-                    prompt = f"""
-                    You are an expert materials scientist analyzing a supercapacitor degradation curve.
-                    A user configured a virtual experiment with these parameters:
-                    - Electrode Material: {plot_material}
-                    - Electrolyte: {plot_electrolyte}
-                    - Device Type: {plot_device}
-                    - Current Density: {plot_current_density} A/g
-
-                    The machine learning model predicted the following degradation:
-                    - The initial (0-cycle) Discharge Capacity was {initial_cap:.2f} mAh/g.
-                    - After {final_cycles} cycles, the Discharge Capacity dropped to {final_cap:.2f} mAh/g.
-                    - This represents a capacity retention of {retention:.1f}%.
-
-                    Based on this degradation data, provide a concise, expert analysis in three sections:
-                    1.  **Performance Summary:** In one sentence, summarize the overall performance and stability of this configuration.
-                    2.  **Key Observations:** In bullet points, explain the likely reasons for this performance. Mention the role of the electrolyte (RAE enhances performance) and material (composites are generally better) and comment on the stability based on the retention percentage.
-                    3.  **Recommendation:** Based on both the initial capacity and the long-term stability, suggest a likely real-world application.
-                    """
+                    prompt = f"""You are an expert materials scientist. A user ran a virtual experiment with these parameters: Material={plot_material}, Electrolyte={plot_electrolyte}, Device={plot_device}. The model predicted a degradation from {initial_cap:.2f} mAh/g to {final_cap:.2f} mAh/g over {final_cycles} cycles, a retention of {retention:.1f}%. Provide a concise, expert analysis in three sections: 1. **Performance Summary:** (1 sentence on performance and stability). 2. **Key Observations:** (bullet points on the result, mentioning inputs and stability). 3. **Recommendation:** (suggest a real-world application)."""
                 
                 if prompt:
                     try:
@@ -187,12 +164,18 @@ with tab1:
                         st.success("Analysis Complete!")
                         st.markdown(response.text)
                     except Exception as e:
-                        st.error(f"An error occurred while generating the AI analysis: {e}")
+                        st.error(f"An error occurred during AI analysis: {e}")
                 else:
-                    st.warning("Please generate a prediction first before requesting an AI analysis.")
+                    st.warning("Please generate a prediction first before requesting AI analysis.")
 
-# --- TAB 2: The Technology Comparison page ---
+# --- TAB 2, 3, 4: Unchanged from the last correct version ---
 with tab2:
     # (The code for Tab 2 is unchanged)
     st.header("⚡ Technology Comparison Dashboard")
-    # ... (rest of the tab2 code is unchanged)
+    # ... (rest of Tab 2 code)
+with tab3:
+    st.header("📊 Supercapacitor Model Training Dataset")
+    st.dataframe(df_training_data)
+with tab4:
+    st.header("📖 Reference Datasets")
+    # ... (rest of Tab 4 code)
