@@ -1,5 +1,5 @@
 # ==============================================================================
-# FINAL CAPSTONE PROJECT: V30 - DEFINITIVE VERSION WITHOUT COULOMBIC EFFICIENCY
+# FINAL CAPSTONE PROJECT: V31 - ALL FEATURES AND TABS CORRECTED
 # ==============================================================================
 
 import streamlit as st
@@ -13,9 +13,6 @@ import google.generativeai as genai
 # --- CACHED MODEL TRAINING AND DATA GENERATION ---
 @st.cache_resource
 def load_and_train_models():
-    """
-    Loads data, generates the large dataset, and trains the models.
-    """
     # ... (The data generation and model training code is unchanged)
     degradation_scenarios = [
         {'config': {'Electrode_Material': 'CuO/MnO2@MWCNT', 'Electrolyte_Type': 'RAE', 'Device_Type': 'Coin Cell', 'Current_Density_Ag-1': 1.0}, 'start_cycles': 0, 'end_cycles': 5000, 'start_charge': 192.03, 'end_charge': 173.79, 'start_discharge': 182.89, 'end_discharge': 165.51},
@@ -73,7 +70,7 @@ try:
 except Exception:
     ai_enabled = False
 
-tab1, tab2, tab3, tab4 = st.tabs(["Supercapacitor Predictor", "Technology Comparison", "Training Dataset", "Reference Datasets"])
+tab1, tab2, tab3, tab4 = st.tabs(["Supercapacitor Predictor", "General Comparison", "Training Dataset", "Detailed Comparison"])
 
 # --- TAB 1: The Supercapacitor Predictor ---
 with tab1:
@@ -156,9 +153,10 @@ with tab1:
                 else:
                     st.warning("Please generate a prediction first before requesting AI analysis.")
 
-# --- TAB 2, 3, 4: Unchanged from the last correct version ---
+# --- TAB 2: The General Technology Comparison page ---
 with tab2:
-    st.header("⚡ Technology Comparison Dashboard")
+    st.header("⚡ General Technology Comparison Dashboard")
+    st.markdown("This dashboard compares key performance metrics across the full spectrum of energy storage technologies.")
     comparison_data = {'Technology': ['Conventional Capacitor', 'This Project\'s Supercapacitor', 'Lithium-ion (Li-ion)', 'Sodium-ion (Na-ion)'], 'Energy Density (Wh/kg)': [0.01, 27.53, 150, 120], 'Power Density (W/kg)': [10000, 1875, 300, 200], 'Cycle Life': [1000000, 50000, 1000, 2000]}
     df_compare = pd.DataFrame(comparison_data); colors = ['#d62728', '#1f77b4', '#ff7f0e', '#2ca02c']
     col1, col2 = st.columns(2)
@@ -181,21 +179,39 @@ with tab2:
     with c2: st.subheader("🚀 Supercapacitor"); st.markdown("**Best for: Speed & Durability**"); st.success("**Use Case:** Regenerative braking, backup power.")
     with c3: st.subheader("🏆 Lithium-ion (Li-ion)"); st.markdown("**Best for: High Energy Storage**"); st.success("**Use Case:** Electric vehicles, smartphones.")
     with c4: st.subheader("💰 Sodium-ion (Na-ion)"); st.markdown("**Best for: Low Cost & Stationary**"); st.success("**Use Case:** Home energy storage, grid backup.")
+
+# --- TAB 3: The Training Dataset Viewer ---
 with tab3:
     st.header("📊 Supercapacitor Model Training Dataset")
     st.markdown("This table displays the **complete, synthetically generated dataset** that was used to train the XGBoost predictive models.")
     st.dataframe(df_training_data)
+
+# --- TAB 4: The Detailed Comparison Tab ---
 with tab4:
-    st.header("📖 Reference Datasets")
-    st.markdown("This section provides the raw or simulated cycle-by-cycle datasets for the technologies used in the comparison dashboard.")
-    st.subheader("Lithium-ion Battery (NASA Experimental Data)")
-    st.markdown("This is real experimental data from the NASA Kaggle dataset for battery `B0005`, showing its discharge capacity over its lifespan.")
-    li_ion_data = {'Cycles': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168], 'Discharge Capacity (Ah)': [1.8567, 1.8463, 1.8353, 1.8256, 1.8153, 1.8048, 1.794, 1.7842, 1.7744, 1.7649, 1.7554, 1.7456, 1.7358, 1.726, 1.7162, 1.7064, 1.6966, 1.6868, 1.677, 1.6672, 1.6574, 1.6476, 1.6378, 1.628, 1.6182, 1.6084, 1.5986, 1.5888, 1.579, 1.5692, 1.5594, 1.5496, 1.5398, 1.53, 1.5202, 1.5104, 1.5006, 1.4908, 1.481, 1.4712, 1.4614, 1.4516, 1.4418, 1.432, 1.4222, 1.4124, 1.4026, 1.3928, 1.383, 1.3732, 1.666, 1.6657, 1.6476, 1.6378, 1.628, 1.6182, 1.6084, 1.5986, 1.5888, 1.579, 1.5692, 1.5594, 1.5496, 1.5398, 1.53, 1.5202, 1.5104, 1.5006, 1.4908, 1.481, 1.4712, 1.4614, 1.4516, 1.4418, 1.432, 1.4222, 1.4124, 1.4026, 1.3928, 1.383, 1.3732, 1.3634, 1.3536, 1.3438, 1.334, 1.3242, 1.3144, 1.3046, 1.2948, 1.285, 1.2752, 1.2654, 1.2556, 1.2458, 1.236, 1.2262, 1.2164, 1.2066, 1.1968, 1.187, 1.5484, 1.5298, 1.518, 1.5061, 1.4942, 1.4823, 1.4704, 1.4585, 1.4466, 1.4347, 1.4228, 1.4109, 1.399, 1.3871, 1.3752, 1.3633, 1.3514, 1.3395, 1.3276, 1.3157, 1.3038, 1.2919, 1.28, 1.2681, 1.2562, 1.2443, 1.2324, 1.2205, 1.2086, 1.1967, 1.4902, 1.4712, 1.46, 1.4489, 1.4377, 1.4266, 1.4154, 1.4043, 1.3931, 1.382, 1.3708, 1.3597, 1.3485, 1.3374, 1.3262, 1.3151, 1.3039, 1.2928, 1.2816, 1.2705, 1.2593, 1.2482, 1.237, 1.2259, 1.2147, 1.2036, 1.1924, 1.1813, 1.3421, 1.3259, 1.3203, 1.3159, 1.3098, 1.305, 1.3005, 1.2952, 1.2901, 1.2845, 1.2794, 1.2743, 1.2686, 1.2628, 1.2572, 1.2511, 1.2452, 1.2392, 1.233, 1.2265, 1.2201, 1.2133]}
-    df_li_ion = pd.DataFrame(li_ion_data)
-    st.dataframe(df_li_ion)
-    
-    st.subheader("Sodium-ion Battery (Simulated Data)")
-    st.markdown("This is a realistically simulated dataset based on performance targets from recent Na-ion research (e.g., ~2000 cycle life).")
-    na_ion_data = {'Cycles': [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000], 'Discharge Capacity (Simulated Ah)': [1.8824, 1.8458, 1.8121, 1.7808, 1.7515, 1.7238, 1.6976, 1.6727, 1.6489, 1.6261, 1.6042, 1.5832, 1.5629, 1.5432, 1.5242, 1.5057, 1.4878, 1.4703, 1.4533, 1.4367, 1.3177]}
-    df_na_ion = pd.DataFrame(na_ion_data)
-    st.dataframe(df_na_ion)
+    st.header("⚙️ Detailed Technology Comparison")
+    st.markdown("This dashboard provides a detailed, side-by-side comparison of the key performance metrics for all four energy storage technologies.")
+    detailed_comparison_data = {
+        'Metric': ["Specific Capacitance (F/g)", "Energy Density (Wh/kg)", "Power Density (W/kg)", "Cycle Life", "Charge Time", "Energy Storage Mechanism"],
+        'Conventional Capacitor': ["Very Low (~0.0001)", "< 0.1", "> 10,000", "> 1,000,000", "Milliseconds", "Physical (Electric Field)"],
+        'This Project\'s Supercapacitor': ["High (100 - 1,200)", "~27.5", "~1,875", "> 50,000", "Seconds to Minutes", "Physical & Chemical (EDLC + Faradaic)"],
+        'Lithium-ion (Li-ion) Battery': ["N/A (Not a capacitor)", "~150", "~300", "~1,000", "Hours", "Chemical (Intercalation)"],
+        'Sodium-ion (Na-ion) Battery': ["N/A (Not a capacitor)", "~120", "~200", "~2,000", "Hours", "Chemical (Intercalation)"]
+    }
+    df_detailed_compare = pd.DataFrame(detailed_comparison_data)
+    st.subheader("Key Performance Metrics")
+    st.markdown("This table highlights the fundamental trade-offs between these devices. Notice the orders-of-magnitude differences.")
+    st.table(df_detailed_compare.set_index('Metric'))
+    st.subheader("Core Differences Explained")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.info("#### Conventional Capacitor")
+        st.markdown("- **Strength:** Extremely high power density (instant speed).\n- **Weakness:** Negligible energy storage.")
+    with col2:
+        st.warning("#### Supercapacitor")
+        st.markdown("- **Strength:** Bridges the gap. High power, very long life, and more energy than a capacitor.\n- **Weakness:** Less energy than a battery.")
+    with col3:
+        st.error("#### Lithium-ion Battery")
+        st.markdown("- **Strength:** High energy density (long runtime).\n- **Weakness:** Slower, shorter life, and higher cost/safety concerns.")
+    with col4:
+        st.success("#### Sodium-ion Battery")
+        st.markdown("- **Strength:** Very low cost and high safety.\n- **Weakness:** Lower energy and power than Li-ion.")
