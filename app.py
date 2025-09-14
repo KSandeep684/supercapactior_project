@@ -1,5 +1,5 @@
 # ==============================================================================
-# FINAL CAPSTONE PROJECT: V28 - DEFINITIVE STABLE VERSION
+# FINAL CAPSTONE PROJECT: V18 - DEFINITIVE VERSION WITH ALL FEATURES
 # ==============================================================================
 
 import streamlit as st
@@ -73,7 +73,6 @@ try:
 except Exception:
     ai_enabled = False
 
-# Restored the four tabs
 tab1, tab2, tab3, tab4 = st.tabs(["Supercapacitor Predictor", "Technology Comparison", "Training Dataset", "Reference Datasets"])
 
 # --- TAB 1: The Supercapacitor Predictor ---
@@ -119,9 +118,12 @@ with tab1:
         if start_cycle >= end_cycle: st.error("Error: 'Start Cycles' must be less than 'End Cycles'.")
         else:
             cycles_to_plot = list(range(start_cycle, end_cycle + 1, step_cycle))
-            output_data = [{'Cycles': c, 'Charge Capacity (mAh/g)': predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, c)[0], 'Discharge Capacity (mAh/g)': predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, c)[1]} for c in cycles_to_plot]
+            output_data = []
+            for cycle in cycles_to_plot:
+                charge, discharge = predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, cycle)
+                efficiency = (discharge / charge) * 100 if charge > 0 else 0
+                output_data.append({'Cycles': cycle, 'Charge Capacity (mAh/g)': charge, 'Discharge Capacity (mAh/g)': discharge, 'Coulombic Efficiency (%)': efficiency})
             df_output = pd.DataFrame(output_data)
-            df_output['Coulombic Efficiency (%)'] = (df_output['Discharge Capacity (mAh/g)'] / df_output['Charge Capacity (mAh/g)']) * 100
             
             if output_format == 'Graph':
                 st.subheader("Predictive Degradation and Efficiency Graphs")
