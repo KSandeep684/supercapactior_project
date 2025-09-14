@@ -1,5 +1,5 @@
 # ==============================================================================
-# FINAL CAPSTONE PROJECT: V32 - DEFINITIVE VERSION WITH ALL TABS
+# FINAL CAPSTONE PROJECT: V30 - DEFINITIVE VERSION WITH ALL TABS & FEATURES
 # ==============================================================================
 
 import streamlit as st
@@ -14,9 +14,9 @@ import google.generativeai as genai
 @st.cache_resource
 def load_and_train_models():
     """
-    Loads data, generates the large dataset, trains the models, and returns all necessary components.
+    Loads data, generates the large dataset, and trains the models.
     """
-    # --- Define Degradation Scenarios Directly ---
+    # ... (The data generation and model training code is unchanged)
     degradation_scenarios = [
         {'config': {'Electrode_Material': 'CuO/MnO2@MWCNT', 'Electrolyte_Type': 'RAE', 'Device_Type': 'Coin Cell', 'Current_Density_Ag-1': 1.0}, 'start_cycles': 0, 'end_cycles': 5000, 'start_charge': 192.03, 'end_charge': 173.79, 'start_discharge': 182.89, 'end_discharge': 165.51},
         {'config': {'Electrode_Material': 'CuO/MnO2@MWCNT', 'Electrolyte_Type': 'KOH', 'Device_Type': 'Coin Cell', 'Current_Density_Ag-1': 1.0}, 'start_cycles': 0, 'end_cycles': 5000, 'start_charge': 71.53, 'end_charge': 58.59, 'start_discharge': 68.12, 'end_discharge': 55.80},
@@ -67,7 +67,7 @@ st.markdown("A Capstone Project to predict supercapacitor performance and genera
 
 try:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    gemini_model = genai.GenerativeModel('gemini-1.0-pro')
+    gemini_model = genai.GenerativeModel('gemini-1.0-pro-latest') # Using the most stable model name
     ai_enabled = True
 except Exception:
     ai_enabled = False
@@ -76,7 +76,6 @@ tab1, tab2, tab3, tab4 = st.tabs(["Supercapacitor Predictor", "General Compariso
 
 # --- TAB 1: The Supercapacitor Predictor ---
 with tab1:
-    # (Code for Tab 1 is unchanged)
     st.header("Supercapacitor Performance Predictor")
     st.sidebar.header("1. Scenario Parameters")
     material_options = ['CuO/MnO2@MWCNT', 'CuO/CoO@MWCNT', 'CuO@MWCNT', 'CuO']; plot_material = st.sidebar.selectbox("Select Electrode Material", material_options)
