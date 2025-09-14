@@ -1,5 +1,5 @@
 # ==============================================================================
-# FINAL CAPSTONE PROJECT: V18 - DEFINITIVE VERSION WITH ALL FEATURES
+# FINAL CAPSTONE PROJECT: V30 - DEFINITIVE VERSION WITHOUT COULOMBIC EFFICIENCY
 # ==============================================================================
 
 import streamlit as st
@@ -14,9 +14,9 @@ import google.generativeai as genai
 @st.cache_resource
 def load_and_train_models():
     """
-    Loads data, generates the large dataset, trains the models, and returns all necessary components.
+    Loads data, generates the large dataset, and trains the models.
     """
-    # --- Define Degradation Scenarios Directly ---
+    # ... (The data generation and model training code is unchanged)
     degradation_scenarios = [
         {'config': {'Electrode_Material': 'CuO/MnO2@MWCNT', 'Electrolyte_Type': 'RAE', 'Device_Type': 'Coin Cell', 'Current_Density_Ag-1': 1.0}, 'start_cycles': 0, 'end_cycles': 5000, 'start_charge': 192.03, 'end_charge': 173.79, 'start_discharge': 182.89, 'end_discharge': 165.51},
         {'config': {'Electrode_Material': 'CuO/MnO2@MWCNT', 'Electrolyte_Type': 'KOH', 'Device_Type': 'Coin Cell', 'Current_Density_Ag-1': 1.0}, 'start_cycles': 0, 'end_cycles': 5000, 'start_charge': 71.53, 'end_charge': 58.59, 'start_discharge': 68.12, 'end_discharge': 55.80},
@@ -86,7 +86,7 @@ with tab1:
     st.sidebar.header("2. Output Configuration")
     output_format = st.sidebar.selectbox("Select Output Format", ('Graph', 'Tabular Data', 'Simple Prediction'))
     
-    charge_pred, discharge_pred, efficiency = 0, 0, 0
+    charge_pred, discharge_pred = 0, 0
     df_output = pd.DataFrame()
     selected_cycles = 5000 # Default value
     
@@ -107,32 +107,24 @@ with tab1:
 
     if output_format == 'Simple Prediction':
         charge_pred, discharge_pred = predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, selected_cycles)
-        efficiency = (discharge_pred / charge_pred) * 100 if charge_pred > 0 else 0
         st.subheader("Prediction Results")
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         col1.metric("Predicted Charge Capacity (mAh/g)", f"{charge_pred:.2f}")
         col2.metric("Predicted Discharge Capacity (mAh/g)", f"{discharge_pred:.2f}")
-        col3.metric("Coulombic Efficiency", f"{efficiency:.2f} %")
     
     elif output_format in ['Graph', 'Tabular Data']:
         if start_cycle >= end_cycle: st.error("Error: 'Start Cycles' must be less than 'End Cycles'.")
         else:
             cycles_to_plot = list(range(start_cycle, end_cycle + 1, step_cycle))
-            output_data = []
-            for cycle in cycles_to_plot:
-                charge, discharge = predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, cycle)
-                efficiency = (discharge / charge) * 100 if charge > 0 else 0
-                output_data.append({'Cycles': cycle, 'Charge Capacity (mAh/g)': charge, 'Discharge Capacity (mAh/g)': discharge, 'Coulombic Efficiency (%)': efficiency})
+            output_data = [{'Cycles': c, 'Charge Capacity (mAh/g)': predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, c)[0], 'Discharge Capacity (mAh/g)': predict_capacity(plot_material, plot_electrolyte, plot_device, plot_current_density, c)[1]} for c in cycles_to_plot]
             df_output = pd.DataFrame(output_data)
             
             if output_format == 'Graph':
-                st.subheader("Predictive Degradation and Efficiency Graphs")
-                fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
-                ax1.plot(df_output['Cycles'], df_output['Charge Capacity (mAh/g)'], marker='o', linestyle='-', markersize=4, label='Charge Capacity'); ax1.plot(df_output['Cycles'], df_output['Discharge Capacity (mAh/g)'], marker='s', linestyle='--', markersize=4, label='Discharge Capacity')
-                ax1.set_title(f'Capacity Degradation for {plot_material}', fontsize=16); ax1.set_ylabel('Capacity (mAh/g)', fontsize=12); ax1.grid(True); ax1.legend()
-                ax2.plot(df_output['Cycles'], df_output['Coulombic Efficiency (%)'], marker='^', linestyle=':', color='purple', label='Coulombic Efficiency')
-                ax2.set_title(f'Coulombic Efficiency for {plot_material}', fontsize=16); ax2.set_xlabel('Number of Cycles Completed', fontsize=12); ax2.set_ylabel('Efficiency (%)', fontsize=12); ax2.grid(True)
-                ax2.set_ylim(bottom=max(0, df_output['Coulombic Efficiency (%)'].min() - 2), top=102); ax2.legend(); st.pyplot(fig)
+                st.subheader("Predictive Degradation Graph")
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.plot(df_output['Cycles'], df_output['Charge Capacity (mAh/g)'], marker='o', linestyle='-', markersize=4, label='Charge Capacity')
+                ax.plot(df_output['Cycles'], df_output['Discharge Capacity (mAh/g)'], marker='s', linestyle='--', markersize=4, label='Discharge Capacity')
+                ax.set_title(f'Capacity Degradation for {plot_material}', fontsize=16); ax.set_xlabel('Number of Cycles Completed', fontsize=12); ax.set_ylabel('Capacity (mAh/g)', fontsize=12); ax.grid(True); _ = ax.legend(); st.pyplot(fig)
             
             elif output_format == 'Tabular Data':
                 st.subheader("Predictive Degradation Data Table")
@@ -147,7 +139,7 @@ with tab1:
             with st.spinner("The AI is analyzing the results..."):
                 prompt = ""
                 if output_format == 'Simple Prediction':
-                    prompt = f"""You are an expert materials scientist. A user ran a virtual experiment with these parameters: Material={plot_material}, Electrolyte={plot_electrolyte}, Device={plot_device}. The model predicted that at {selected_cycles} cycles, the Discharge Capacity is {discharge_pred:.2f} mAh/g with a Coulombic Efficiency of {efficiency:.2f}%. Provide a concise, expert analysis in three sections: 1. **Performance Summary:** (1 sentence). 2. **Key Observations:** (bullet points explaining the result based on the inputs). 3. **Recommendation:** (suggest a real-world application)."""
+                    prompt = f"""You are an expert materials scientist. A user ran a virtual experiment with these parameters: Material={plot_material}, Electrolyte={plot_electrolyte}, Device={plot_device}. The model predicted that at {selected_cycles} cycles, the Discharge Capacity is {discharge_pred:.2f} mAh/g. Provide a concise, expert analysis in three sections: 1. **Performance Summary:** (1 sentence). 2. **Key Observations:** (bullet points explaining the result based on the inputs). 3. **Recommendation:** (suggest a real-world application)."""
                 elif not df_output.empty:
                     initial_cap = df_output.iloc[0]['Discharge Capacity (mAh/g)']
                     final_cap = df_output.iloc[-1]['Discharge Capacity (mAh/g)']
