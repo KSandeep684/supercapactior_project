@@ -51,7 +51,7 @@ st.markdown("A Capstone Project to predict supercapacitor performance and genera
 
 # Set up Gemini (Google Generative AI) model
 try:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    genai.configure(api_key=st.secrets["AIzaSyBhR6VCS5Vq03-WpsEG_jUliplJYiVEwaU"])
     gemini_model = genai.GenerativeModel('gemini-1.5-pro')  # Fixed model name!
     ai_enabled = True
 except Exception as e:
